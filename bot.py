@@ -5,12 +5,13 @@ import logging
 import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from aiogram.enums import ParseMode
+from aiogram.enums import ParseMode, ChatMemberStatus, ChatType
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_USERNAME = "tsuyaki"
 REQUIRED_CHANNEL = "@AnimelarGR"
-WAIFU_INTERVAL = 300
+WAIFU_INTERVAL = 300  # 5 minut
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -18,26 +19,41 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+# Rarity tizimi
 RARITIES = {
-    "Common": {"chance": 40, "coins": 100, "emoji": "⚪", "shop_price": 500},
-    "Rare": {"chance": 25, "coins": 200, "emoji": "🟢", "shop_price": 1000},
-    "Super Rare": {"chance": 15, "coins": 250, "emoji": "🔵", "shop_price": 1500},
-    "Epic": {"chance": 10, "coins": 400, "emoji": "🟣", "shop_price": 2500},
-    "Mythic": {"chance": 5, "coins": 500, "emoji": "🟠", "shop_price": 4000},
-    "Legendary": {"chance": 3, "coins": 700, "emoji": "🟡", "shop_price": 6000},
-    "Ultra Legendary": {"chance": 2, "coins": 1000, "emoji": "🔴", "shop_price": 10000}
+    "Common": {"chance": 40, "coins": 50, "emoji": "⚪", "shop_price": 500},
+    "Rare": {"chance": 25, "coins": 100, "emoji": "🟢", "shop_price": 1000},
+    "Super Rare": {"chance": 15, "coins": 200, "emoji": "🔵", "shop_price": 1500},
+    "Epic": {"chance": 10, "coins": 250, "emoji": "🟣", "shop_price": 2500},
+    "Mythic": {"chance": 5, "coins": 400, "emoji": "🟠", "shop_price": 4000},
+    "Legendary": {"chance": 3, "coins": 500, "emoji": "🟡", "shop_price": 6000},
+    "Ultra Legendary": {"chance": 2, "coins": 700, "emoji": "🔴", "shop_price": 10000}
 }
 
+# 15 ta anime waifu
 WAIFUS = [
     {"name": "hinata", "display_name": "Hinata", "anime": "Naruto", "rarity": "Rare"},
     {"name": "rem", "display_name": "Rem", "anime": "Re:Zero", "rarity": "Epic"},
+    {"name": "emilia", "display_name": "Emilia", "anime": "Re:Zero", "rarity": "Epic"},
     {"name": "mikasa", "display_name": "Mikasa", "anime": "Attack on Titan", "rarity": "Legendary"},
+    {"name": "asuna", "display_name": "Asuna", "anime": "Sword Art Online", "rarity": "Super Rare"},
     {"name": "zero two", "display_name": "Zero Two", "anime": "Darling in the Franxx", "rarity": "Mythic"},
-    {"name": "nezuko", "display_name": "Nezuko", "anime": "Demon Slayer", "rarity": "Super Rare"}
+    {"name": "nezuko", "display_name": "Nezuko", "anime": "Demon Slayer", "rarity": "Super Rare"},
+    {"name": "chika", "display_name": "Chika", "anime": "Kaguya-sama", "rarity": "Common"},
+    {"name": "mai", "display_name": "Mai", "anime": "Bunny Girl Senpai", "rarity": "Rare"},
+    {"name": "makima", "display_name": "Makima", "anime": "Chainsaw Man", "rarity": "Legendary"},
+    {"name": "power", "display_name": "Power", "anime": "Chainsaw Man", "rarity": "Super Rare"},
+    {"name": "yor", "display_name": "Yor", "anime": "Spy x Family", "rarity": "Epic"},
+    {"name": "marin", "display_name": "Marin", "anime": "My Dress-Up Darling", "rarity": "Mythic"},
+    {"name": "nagisa", "display_name": "Nagisa", "anime": "Clannad", "rarity": "Common"},
+    {"name": "saber", "display_name": "Saber", "anime": "Fate/Stay Night", "rarity": "Ultra Legendary"}
 ]
 
 current_waifu = None
 data = {"groups": [], "users": {}}
+
+def save_data():
+    pass
 
 def get_user(user_id):
     user_id = str(user_id)
@@ -54,10 +70,62 @@ def select_rarity():
             return rarity
     return "Common"
 
+async def check_subscription(user_id: int) -> bool:
+    """Foydalanuvchi kanalga obuna bo'lganini tekshiradi"""
+    try:
+        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
+        return member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
+    except Exception as e:
+        logger.error(f"Kanal tekshirishda xatolik: {e}")
+        return False
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     user = get_user(message.from_user.id)
-    await message.answer(f"🎌 <b>Botga xush kelibsiz!</b>\n💰 Coinlaringiz: {user['coins']}", parse_mode=ParseMode.HTML)
+    await message.answer(
+        f"🎌 <b>Anime Waifu Botiga xush kelibsiz!</b>\n\n"
+        f"💰 Coinlaringiz: <b>{user['coins']}</b>\n\n"
+        f"📋 <b>Buyruqlar:</b>\n"
+        f"/info - Bot haqida\n"
+        f"/mywaifus - Mening waifularim\n"
+        f"/shop - Do'kon\n"
+        f"/balance - Coin miqdori\n"
+        f"/ega - Bot egasi\n\n"
+        f"⚙️ <b>Guruh uchun:</b>\n"
+        f"/setgroup - Guruhni ro'yxatga olish\n\n"
+        f"🎮 <b>O'yin:</b>\n"
+        f"Har 5 minutda guruhga waifu tashlanadi.\n"
+        f"Birinchi bo'lib topgan odam uni qo'lga kiritadi!\n"
+        f"Javob: /guess <waifu_ismi>",
+        parse_mode=ParseMode.HTML
+    )
+
+@dp.message(Command("info"))
+async def cmd_info(message: types.Message):
+    await message.answer(
+        f"🎌 <b>Anime Waifu Bot</b>\n\n"
+        f"Har 5 minutda guruhga tasodifiy waifu tashlanadi.\n"
+        f"Birinchi bo'lib topgan odam uni qo'lga kiritadi!\n\n"
+        f"🎯 <b>Rarity tizimi:</b>\n"
+        f"⚪ Common - 50 coin (40%)\n"
+        f"🟢 Rare - 100 coin (25%)\n"
+        f"🔵 Super Rare - 200 coin (15%)\n"
+        f"🟣 Epic - 250 coin (10%)\n"
+        f"🟠 Mythic - 400 coin (5%)\n"
+        f"🟡 Legendary - 500 coin (3%)\n"
+        f"🔴 Ultra Legendary - 700 coin (2%)\n\n"
+        f"👑 Ega: @{OWNER_USERNAME}",
+        parse_mode=ParseMode.HTML
+    )
+
+@dp.message(Command("ega"))
+async def cmd_ega(message: types.Message):
+    await message.answer(f"👑 Ega: @{OWNER_USERNAME}")
+
+@dp.message(Command("balance"))
+async def cmd_balance(message: types.Message):
+    user = get_user(message.from_user.id)
+    await message.answer(f"💰 Sizning coinlaringiz: <b>{user['coins']}</b>", parse_mode=ParseMode.HTML)
 
 @dp.message(Command("mywaifus"))
 async def cmd_mywaifus(message: types.Message):
@@ -65,58 +133,226 @@ async def cmd_mywaifus(message: types.Message):
     if not user["waifus"]:
         await message.answer("Sizda hali hech qanday waifu yo'q!")
         return
-    text = "\n".join([f"{w['display_name']} x{c}" for w, c in user["waifus"].items()])
-    await message.answer(f"💖 Waifularingiz:\n{text}")
+    
+    waifus_list = []
+    for waifu_name, count in user["waifus"].items():
+        waifu_info = next((w for w in WAIFUS if w["name"] == waifu_name), None)
+        if waifu_info:
+            rarity_emoji = RARITIES[waifu_info["rarity"]]["emoji"]
+            display_text = f"{waifu_info['display_name']} x{count}" if count > 1 else waifu_info['display_name']
+            waifus_list.append(f"{rarity_emoji} {display_text} ({waifu_info['anime']})")
+    
+    total_waifus = sum(user["waifus"].values())
+    await message.answer(
+        f"💖 <b>Sizning waifularingiz ({total_waifus} ta):</b>\n\n" + "\n".join(waifus_list),
+        parse_mode=ParseMode.HTML
+    )
+
+@dp.message(Command("shop"))
+async def cmd_shop(message: types.Message):
+    user = get_user(message.from_user.id)
+    
+    shop_list = []
+    for w in WAIFUS:
+        rarity_info = RARITIES[w["rarity"]]
+        shop_list.append(f"{rarity_info['emoji']} {w['display_name']} ({w['anime']}) - <b>{rarity_info['shop_price']} coin</b>")
+    
+    await message.answer(
+        f"🛍️ <b>Do'kon</b>\n\n💰 Sizning coinlaringiz: <b>{user['coins']}</b>\n\n" + 
+        "\n".join(shop_list) + 
+        "\n\n💡 <b>Sotib olish:</b> /buy <ism>\nMasalan: /buy hinata",
+        parse_mode=ParseMode.HTML
+    )
+
+@dp.message(Command("buy"))
+async def cmd_buy(message: types.Message):
+    user = get_user(message.from_user.id)
+    args = message.text.split(maxsplit=1)
+    
+    if len(args) < 2:
+        await message.answer("❌ Format: /buy <waifu_ismi>\nMasalan: /buy hinata")
+        return
+    
+    waifu_name = args[1].strip().lower()
+    waifu_info = next((w for w in WAIFUS if w["name"] == waifu_name), None)
+    
+    if not waifu_info:
+        await message.answer("❌ Bunday waifu mavjud emas!\n/shop - barcha waifular ro'yxati")
+        return
+    
+    price = RARITIES[waifu_info["rarity"]]["shop_price"]
+    
+    if user["coins"] < price:
+        await message.answer(
+            f"❌ Yetarli coin yo'q!\n"
+            f"Kerak: {price} coin\n"
+            f"Sizda: {user['coins']} coin"
+        )
+        return
+    
+    user["coins"] -= price
+    user["waifus"][waifu_name] = user["waifus"].get(waifu_name, 0) + 1
+    
+    await message.answer(
+        f"✅ Tabriklaymiz!\n\n"
+        f"Siz <b>{waifu_info['display_name']}</b>ni sotib oldingiz!\n"
+        f"💰 Narxi: {price} coin\n"
+        f"💰 Qolgan coin: {user['coins']}",
+        parse_mode=ParseMode.HTML
+    )
+
+@dp.message(Command("setgroup"))
+async def cmd_setgroup(message: types.Message):
+    # Faqat guruhda ishlaydi
+    if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        await message.answer("❌ Bu buyruq faqat guruhda ishlaydi!")
+        return
+    
+    # Admin tekshirish
+    try:
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        if member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
+            await message.answer("❌ Bu buyruqni faqat adminlar ishlatishi mumkin!")
+            return
+    except Exception as e:
+        logger.error(f"Admin tekshirishda xatolik: {e}")
+        await message.answer("❌ Admin tekshirishda xatolik!")
+        return
+    
+    # Kanalga obuna tekshirish
+    is_subscribed = await check_subscription(message.from_user.id)
+    if not is_subscribed:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📢 Kanalga obuna bo'lish", url=f"https://t.me/{REQUIRED_CHANNEL[1:]}")]
+        ])
+        await message.answer(
+            f"⚠️ Botni ishlatish uchun avval <b>{REQUIRED_CHANNEL}</b> kanaliga obuna bo'ling!",
+            reply_markup=keyboard,
+            parse_mode=ParseMode.HTML
+        )
+        return
+    
+    # Guruh allaqachon ro'yxatdan o'tganmi?
+    if message.chat.id in data["groups"]:
+        await message.answer("❌ Bu guruhga allaqachon bot o'rnatilgan!")
+        return
+    
+    # Guruhni ro'yxatga olish
+    data["groups"].append(message.chat.id)
+    await message.answer(
+        "✅ <b>Guruh muvaffaqiyatli ro'yxatga olindi!</b>\n\n"
+        "Endi har 5 minutda guruhga waifu tashlanadi.\n"
+        "Birinchi bo'lib topgan odam uni qo'lga kiritadi!",
+        parse_mode=ParseMode.HTML
+    )
 
 @dp.message(Command("guess"))
 async def cmd_guess(message: types.Message):
+    # Faqat guruhda ishlaydi
+    if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        await message.answer("❌ Bu buyruq faqat guruhda ishlaydi!")
+        return
+    
+    # Guruh ro'yxatdan o'tganmi?
+    if message.chat.id not in data["groups"]:
+        await message.answer("❌ Bu guruh ro'yxatdan o'tmagan!\n/setgroup - guruhni ro'yxatga olish")
+        return
+    
     global current_waifu
+    
     if not current_waifu:
-        await message.answer("Hozircha hech qanday waifu yo'q. Kuting!")
+        await message.answer("❌ Hozircha hech qanday waifu yo'q. Keyingi waifuni kuting!")
         return
+    
     args = message.text.split(maxsplit=1)
-    if len(args) < 2 or args[1].strip().lower() != current_waifu["name"]:
+    if len(args) < 2:
+        await message.answer("❌ Format: /guess <waifu_ismi>\nMasalan: /guess hinata")
+        return
+    
+    user_guess = args[1].strip().lower()
+    
+    # To'g'ri javobmi?
+    if user_guess == current_waifu["name"].lower():
+        user = get_user(message.from_user.id)
+        waifu_info = current_waifu
+        rarity_info = RARITIES[waifu_info["rarity"]]
+        
+        # Coin qo'shish
+        user["coins"] += rarity_info["coins"]
+        
+        # Waifu qo'shish (agar allaqachon bo'lsa, sonini oshirish)
+        user["waifus"][waifu_info["name"]] = user["waifus"].get(waifu_info["name"], 0) + 1
+        count = user["waifus"][waifu_info["name"]]
+        
+        count_text = f" x{count}" if count > 1 else ""
+        
+        await message.answer(
+            f"🎉 <b>Tabriklaymiz, {message.from_user.full_name}!</b>\n\n"
+            f"Siz <b>{waifu_info['display_name']}</b>ni qo'lga kiritdingiz!{count_text}\n"
+            f"🎭 Rarity: {rarity_info['emoji']} {waifu_info['rarity']}\n"
+            f"💰 +{rarity_info['coins']} coin\n"
+            f"💰 Jami coin: {user['coins']}",
+            parse_mode=ParseMode.HTML
+        )
+        
+        # Waifuni tozalash (boshqa ololmaydi)
+        current_waifu = None
+    else:
         await message.answer("❌ Noto'g'ri! Qayta urinib ko'ring.")
-        return
-    
-    user = get_user(message.from_user.id)
-    r_info = RARITIES[current_waifu["rarity"]]
-    user["coins"] += r_info["coins"]
-    name = current_waifu["name"]
-    user["waifus"][name] = user["waifus"].get(name, 0) + 1
-    
-    count = user["waifus"][name]
-    await message.answer(f"🎉 Tabriklaymiz! Siz <b>{current_waifu['display_name']}</b>ni qo'lga kiritdingiz! (x{count})\n+{r_info['coins']} coin", parse_mode=ParseMode.HTML)
-    current_waifu = None
 
-async def send_waifu():
+async def send_waifu_to_group():
+    """Har 5 minutda guruhga waifu yuboradi"""
     global current_waifu
-    if not data["groups"]: 
+    
+    if not data["groups"]:
         return
-    r = select_rarity()
-    w_list = [w for w in WAIFUS if w["rarity"] == r]
-    current_waifu = random.choice(w_list if w_list else WAIFUS)
-    r_info = RARITIES[current_waifu["rarity"]]
     
-    text = (f"🎌 <b>Yangi waifu paydo bo'ldi!</b>\n\n"
-            f"Bu qaysi anime qizi?\n"
-            f"🎭 Rarity: {r_info['emoji']} {current_waifu['rarity']}\n"
-            f"💰 Mukofot: {r_info['coins']} coin\n\n"
-            f"Javob: /guess <ism>")
+    # Tasodifiy rarity tanlash
+    selected_rarity = select_rarity()
     
-    for gid in data["groups"]:
+    # Shu rarity'dagi waifularni topish
+    available_waifus = [w for w in WAIFUS if w["rarity"] == selected_rarity]
+    
+    # Agar shu rarity'da waifu bo'lmasa, boshqa rarity'dan tanlash
+    if not available_waifus:
+        available_waifus = WAIFUS
+    
+    current_waifu = random.choice(available_waifus)
+    rarity_info = RARITIES[current_waifu["rarity"]]
+    
+    # Waifuni ismini yozmasdan xabar yuborish
+    text = (
+        f"🎌 <b>Yangi waifu paydo bo'ldi!</b>\n\n"
+        f"Bu qaysi anime qizi?\n"
+        f"🎭 Rarity: {rarity_info['emoji']} {current_waifu['rarity']}\n"
+        f"💰 Mukofot: {rarity_info['coins']} coin\n\n"
+        f"Birinchi bo'lib topgan odam uni qo'lga kiritadi!\n"
+        f"Javob: /guess <ism>"
+    )
+    
+    # Barcha guruhga yuborish
+    for group_id in data["groups"]:
         try:
-            await bot.send_photo(gid, "https://via.placeholder.com/400x600.png?text=Anime+Waifu", caption=text, parse_mode=ParseMode.HTML)
+            await bot.send_photo(
+                chat_id=group_id,
+                photo="https://via.placeholder.com/400x600.png?text=Anime+Waifu",
+                caption=text,
+                parse_mode=ParseMode.HTML
+            )
         except Exception as e:
-            logger.error(f"Xatolik: {e}")
+            logger.error(f"Guruhga yuborishda xatolik (ID: {group_id}): {e}")
 
-async def scheduler():
+async def waifu_scheduler():
+    """Har 5 minutda waifu tashlaydi"""
     while True:
-        await send_waifu()
+        await send_waifu_to_group()
         await asyncio.sleep(WAIFU_INTERVAL)
 
 async def main():
-    asyncio.create_task(scheduler())
+    # Scheduler'ni ishga tushirish
+    asyncio.create_task(waifu_scheduler())
+    
+    # Botni ishga tushirish
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
