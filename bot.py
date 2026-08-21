@@ -81,6 +81,10 @@ async def check_subscription(user_id: int) -> bool:
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
+        return
+    
     user = get_user(message.from_user.id)
     await message.answer(
         f"🎌 <b>Anime Waifu Botiga xush kelibsiz!</b>\n\n"
@@ -88,8 +92,11 @@ async def cmd_start(message: types.Message):
         f"📋 <b>Buyruqlar:</b>\n"
         f"/info - Bot haqida\n"
         f"/mywaifus - Mening waifularim\n"
-        f"/shop - Do'kon\n"
+        f"/mycoins - Coin miqdori\n"
         f"/balance - Coin miqdori\n"
+        f"/shop - Do'kon\n"
+        f"/givecoin - Coin berish\n"
+        f"/giftwaifu - Waifu sovg'a qilish\n"
         f"/ega - Bot egasi\n\n"
         f"⚙️ <b>Guruh uchun:</b>\n"
         f"/setgroup - Guruhni ro'yxatga olish\n\n"
@@ -102,6 +109,10 @@ async def cmd_start(message: types.Message):
 
 @dp.message(Command("info"))
 async def cmd_info(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
+        return
+    
     await message.answer(
         f"🎌 <b>Anime Waifu Bot</b>\n\n"
         f"Har 5 minutda guruhga tasodifiy waifu tashlanadi.\n"
@@ -120,15 +131,27 @@ async def cmd_info(message: types.Message):
 
 @dp.message(Command("ega"))
 async def cmd_ega(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
+        return
+    
     await message.answer(f"👑 Ega: @{OWNER_USERNAME}")
 
-@dp.message(Command("balance"))
+@dp.message(Command("balance", "mycoins"))
 async def cmd_balance(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
+        return
+    
     user = get_user(message.from_user.id)
     await message.answer(f"💰 Sizning coinlaringiz: <b>{user['coins']}</b>", parse_mode=ParseMode.HTML)
 
 @dp.message(Command("mywaifus"))
 async def cmd_mywaifus(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
+        return
+    
     user = get_user(message.from_user.id)
     if not user["waifus"]:
         await message.answer("Sizda hali hech qanday waifu yo'q!")
@@ -150,6 +173,10 @@ async def cmd_mywaifus(message: types.Message):
 
 @dp.message(Command("shop"))
 async def cmd_shop(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
+        return
+    
     user = get_user(message.from_user.id)
     
     shop_list = []
@@ -166,6 +193,10 @@ async def cmd_shop(message: types.Message):
 
 @dp.message(Command("buy"))
 async def cmd_buy(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
+        return
+    
     user = get_user(message.from_user.id)
     args = message.text.split(maxsplit=1)
     
@@ -201,14 +232,137 @@ async def cmd_buy(message: types.Message):
         parse_mode=ParseMode.HTML
     )
 
+@dp.message(Command("givecoin"))
+async def cmd_givecoin(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
+        return
+    
+    giver = get_user(message.from_user.id)
+    
+    # Reply orqali berish
+    if message.reply_to_message:
+        receiver_id = message.reply_to_message.from_user.id
+        args = message.text.split(maxsplit=1)
+        if len(args) < 2:
+            await message.answer("❌ Format: /givecoin <miqdor>\nMasalan: /givecoin 100")
+            return
+        try:
+            amount = int(args[1])
+        except ValueError:
+            await message.answer("❌ Miqdor son bo'lishi kerak!")
+            return
+    # @username orqali berish
+    elif message.entities and len(message.entities) > 1:
+        args = message.text.split()
+        if len(args) < 3:
+            await message.answer("❌ Format: /givecoin @username <miqdor>\nMasalan: /givecoin @username 100")
+            return
+        username = args[1].replace("@", "")
+        try:
+            amount = int(args[2])
+        except ValueError:
+            await message.answer("❌ Miqdor son bo'lishi kerak!")
+            return
+        
+        # Username orqali user ID topish
+        try:
+            chat = await bot.get_chat(f"@{username}")
+            receiver_id = chat.id
+        except Exception as e:
+            await message.answer("❌ Foydalanuvchi topilmadi!")
+            return
+    else:
+        await message.answer("❌ Format:\n/givecoin @username <miqdor>\nYoki reply qilib: /givecoin <miqdor>")
+        return
+    
+    if amount <= 0:
+        await message.answer("❌ Miqdor 0 dan katta bo'lishi kerak!")
+        return
+    
+    if giver["coins"] < amount:
+        await message.answer(f"❌ Yetarli coin yo'q!\nSizda: {giver['coins']} coin")
+        return
+    
+    receiver = get_user(receiver_id)
+    giver["coins"] -= amount
+    receiver["coins"] += amount
+    
+    await message.answer(
+        f"✅ Muvaffaqiyatli!\n\n"
+        f"Siz <b>{amount}</b> coinni @{receiver_id} ga berdingiz!\n"
+        f"💰 Qolgan coin: {giver['coins']}",
+        parse_mode=ParseMode.HTML
+    )
+
+@dp.message(Command("giftwaifu"))
+async def cmd_giftwaifu(message: types.Message):
+    if message.chat.type != ChatType.PRIVATE:
+        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
+        return
+    
+    giver = get_user(message.from_user.id)
+    
+    # Reply orqali berish
+    if message.reply_to_message:
+        receiver_id = message.reply_to_message.from_user.id
+        args = message.text.split(maxsplit=1)
+        if len(args) < 2:
+            await message.answer("❌ Format: /giftwaifu <waifu_ismi>\nMasalan: /giftwaifu hinata")
+            return
+        waifu_name = args[1].strip().lower()
+    # @username orqali berish
+    elif message.entities and len(message.entities) > 1:
+        args = message.text.split()
+        if len(args) < 3:
+            await message.answer("❌ Format: /giftwaifu @username <waifu_ismi>\nMasalan: /giftwaifu @username hinata")
+            return
+        username = args[1].replace("@", "")
+        waifu_name = args[2].strip().lower()
+        
+        try:
+            chat = await bot.get_chat(f"@{username}")
+            receiver_id = chat.id
+        except Exception as e:
+            await message.answer("❌ Foydalanuvchi topilmadi!")
+            return
+    else:
+        await message.answer("❌ Format:\n/giftwaifu @username <waifu_ismi>\nYoki reply qilib: /giftwaifu <waifu_ismi>")
+        return
+    
+    # Waifu mavjudmi?
+    waifu_info = next((w for w in WAIFUS if w["name"] == waifu_name), None)
+    if not waifu_info:
+        await message.answer("❌ Bunday waifu mavjud emas!")
+        return
+    
+    # Beruvchida waifu bormi?
+    if waifu_name not in giver["waifus"] or giver["waifus"][waifu_name] == 0:
+        await message.answer(f"❌ Sizda <b>{waifu_info['display_name']}</b> yo'q!", parse_mode=ParseMode.HTML)
+        return
+    
+    receiver = get_user(receiver_id)
+    
+    # Beruvchidan olish
+    giver["waifus"][waifu_name] -= 1
+    if giver["waifus"][waifu_name] == 0:
+        del giver["waifus"][waifu_name]
+    
+    # Qabul qiluvchiga berish
+    receiver["waifus"][waifu_name] = receiver["waifus"].get(waifu_name, 0) + 1
+    
+    await message.answer(
+        f"✅ Muvaffaqiyatli!\n\n"
+        f"Siz <b>{waifu_info['display_name']}</b>ni @{receiver_id} ga sovg'a qildingiz!",
+        parse_mode=ParseMode.HTML
+    )
+
 @dp.message(Command("setgroup"))
 async def cmd_setgroup(message: types.Message):
-    # Faqat guruhda ishlaydi
     if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
         await message.answer("❌ Bu buyruq faqat guruhda ishlaydi!")
         return
     
-    # Admin tekshirish
     try:
         member = await bot.get_chat_member(message.chat.id, message.from_user.id)
         if member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
@@ -219,7 +373,6 @@ async def cmd_setgroup(message: types.Message):
         await message.answer("❌ Admin tekshirishda xatolik!")
         return
     
-    # Kanalga obuna tekshirish
     is_subscribed = await check_subscription(message.from_user.id)
     if not is_subscribed:
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -232,12 +385,10 @@ async def cmd_setgroup(message: types.Message):
         )
         return
     
-    # Guruh allaqachon ro'yxatdan o'tganmi?
     if message.chat.id in data["groups"]:
         await message.answer("❌ Bu guruhga allaqachon bot o'rnatilgan!")
         return
     
-    # Guruhni ro'yxatga olish
     data["groups"].append(message.chat.id)
     await message.answer(
         "✅ <b>Guruh muvaffaqiyatli ro'yxatga olindi!</b>\n\n"
@@ -248,12 +399,10 @@ async def cmd_setgroup(message: types.Message):
 
 @dp.message(Command("guess"))
 async def cmd_guess(message: types.Message):
-    # Faqat guruhda ishlaydi
     if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
         await message.answer("❌ Bu buyruq faqat guruhda ishlaydi!")
         return
     
-    # Guruh ro'yxatdan o'tganmi?
     if message.chat.id not in data["groups"]:
         await message.answer("❌ Bu guruh ro'yxatdan o'tmagan!\n/setgroup - guruhni ro'yxatga olish")
         return
@@ -271,16 +420,12 @@ async def cmd_guess(message: types.Message):
     
     user_guess = args[1].strip().lower()
     
-    # To'g'ri javobmi?
     if user_guess == current_waifu["name"].lower():
         user = get_user(message.from_user.id)
         waifu_info = current_waifu
         rarity_info = RARITIES[waifu_info["rarity"]]
         
-        # Coin qo'shish
         user["coins"] += rarity_info["coins"]
-        
-        # Waifu qo'shish (agar allaqachon bo'lsa, sonini oshirish)
         user["waifus"][waifu_info["name"]] = user["waifus"].get(waifu_info["name"], 0) + 1
         count = user["waifus"][waifu_info["name"]]
         
@@ -295,32 +440,25 @@ async def cmd_guess(message: types.Message):
             parse_mode=ParseMode.HTML
         )
         
-        # Waifuni tozalash (boshqa ololmaydi)
         current_waifu = None
     else:
         await message.answer("❌ Noto'g'ri! Qayta urinib ko'ring.")
 
 async def send_waifu_to_group():
-    """Har 5 minutda guruhga waifu yuboradi"""
     global current_waifu
     
     if not data["groups"]:
         return
     
-    # Tasodifiy rarity tanlash
     selected_rarity = select_rarity()
-    
-    # Shu rarity'dagi waifularni topish
     available_waifus = [w for w in WAIFUS if w["rarity"] == selected_rarity]
     
-    # Agar shu rarity'da waifu bo'lmasa, boshqa rarity'dan tanlash
     if not available_waifus:
         available_waifus = WAIFUS
     
     current_waifu = random.choice(available_waifus)
     rarity_info = RARITIES[current_waifu["rarity"]]
     
-    # Waifuni ismini yozmasdan xabar yuborish
     text = (
         f"🎌 <b>Yangi waifu paydo bo'ldi!</b>\n\n"
         f"Bu qaysi anime qizi?\n"
@@ -330,7 +468,6 @@ async def send_waifu_to_group():
         f"Javob: /guess <ism>"
     )
     
-    # Barcha guruhga yuborish
     for group_id in data["groups"]:
         try:
             await bot.send_photo(
@@ -343,16 +480,12 @@ async def send_waifu_to_group():
             logger.error(f"Guruhga yuborishda xatolik (ID: {group_id}): {e}")
 
 async def waifu_scheduler():
-    """Har 5 minutda waifu tashlaydi"""
     while True:
         await send_waifu_to_group()
         await asyncio.sleep(WAIFU_INTERVAL)
 
 async def main():
-    # Scheduler'ni ishga tushirish
     asyncio.create_task(waifu_scheduler())
-    
-    # Botni ishga tushirish
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
