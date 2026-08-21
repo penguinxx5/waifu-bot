@@ -11,7 +11,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_USERNAME = "tsuyaki"
 REQUIRED_CHANNEL = "@AnimelarGR"
-WAIFU_INTERVAL = 300  # 5 minut
+WAIFU_INTERVAL = 300
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-# Rarity tizimi
 RARITIES = {
     "Common": {"chance": 40, "coins": 50, "emoji": "⚪", "shop_price": 500},
     "Rare": {"chance": 25, "coins": 100, "emoji": "🟢", "shop_price": 1000},
@@ -30,7 +29,6 @@ RARITIES = {
     "Ultra Legendary": {"chance": 2, "coins": 700, "emoji": "🔴", "shop_price": 10000}
 }
 
-# 15 ta anime waifu
 WAIFUS = [
     {"name": "hinata", "display_name": "Hinata", "anime": "Naruto", "rarity": "Rare"},
     {"name": "rem", "display_name": "Rem", "anime": "Re:Zero", "rarity": "Epic"},
@@ -52,9 +50,6 @@ WAIFUS = [
 current_waifu = None
 data = {"groups": [], "users": {}}
 
-def save_data():
-    pass
-
 def get_user(user_id):
     user_id = str(user_id)
     if user_id not in data["users"]:
@@ -70,21 +65,8 @@ def select_rarity():
             return rarity
     return "Common"
 
-async def check_subscription(user_id: int) -> bool:
-    """Foydalanuvchi kanalga obuna bo'lganini tekshiradi"""
-    try:
-        member = await bot.get_chat_member(REQUIRED_CHANNEL, user_id)
-        return member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
-    except Exception as e:
-        logger.error(f"Kanal tekshirishda xatolik: {e}")
-        return False
-
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
-        return
-    
     user = get_user(message.from_user.id)
     await message.answer(
         f"🎌 <b>Anime Waifu Botiga xush kelibsiz!</b>\n\n"
@@ -93,26 +75,17 @@ async def cmd_start(message: types.Message):
         f"/info - Bot haqida\n"
         f"/mywaifus - Mening waifularim\n"
         f"/mycoins - Coin miqdori\n"
-        f"/balance - Coin miqdori\n"
         f"/shop - Do'kon\n"
         f"/givecoin - Coin berish\n"
         f"/giftwaifu - Waifu sovg'a qilish\n"
         f"/ega - Bot egasi\n\n"
         f"⚙️ <b>Guruh uchun:</b>\n"
-        f"/setgroup - Guruhni ro'yxatga olish\n\n"
-        f"🎮 <b>O'yin:</b>\n"
-        f"Har 5 minutda guruhga waifu tashlanadi.\n"
-        f"Birinchi bo'lib topgan odam uni qo'lga kiritadi!\n"
-        f"Javob: /guess <waifu_ismi>",
+        f"/setgroup - Guruhni ro'yxatga olish",
         parse_mode=ParseMode.HTML
     )
 
 @dp.message(Command("info"))
 async def cmd_info(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
-        return
-    
     await message.answer(
         f"🎌 <b>Anime Waifu Bot</b>\n\n"
         f"Har 5 minutda guruhga tasodifiy waifu tashlanadi.\n"
@@ -131,27 +104,15 @@ async def cmd_info(message: types.Message):
 
 @dp.message(Command("ega"))
 async def cmd_ega(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
-        return
-    
     await message.answer(f"👑 Ega: @{OWNER_USERNAME}")
 
 @dp.message(Command("balance", "mycoins"))
 async def cmd_balance(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
-        return
-    
     user = get_user(message.from_user.id)
     await message.answer(f"💰 Sizning coinlaringiz: <b>{user['coins']}</b>", parse_mode=ParseMode.HTML)
 
 @dp.message(Command("mywaifus"))
 async def cmd_mywaifus(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq faqat botning shaxsiy chatida ishlaydi!")
-        return
-    
     user = get_user(message.from_user.id)
     if not user["waifus"]:
         await message.answer("Sizda hali hech qanday waifu yo'q!")
@@ -173,10 +134,6 @@ async def cmd_mywaifus(message: types.Message):
 
 @dp.message(Command("shop"))
 async def cmd_shop(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
-        return
-    
     user = get_user(message.from_user.id)
     
     shop_list = []
@@ -193,10 +150,6 @@ async def cmd_shop(message: types.Message):
 
 @dp.message(Command("buy"))
 async def cmd_buy(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
-        return
-    
     user = get_user(message.from_user.id)
     args = message.text.split(maxsplit=1)
     
@@ -234,13 +187,8 @@ async def cmd_buy(message: types.Message):
 
 @dp.message(Command("givecoin"))
 async def cmd_givecoin(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
-        return
-    
     giver = get_user(message.from_user.id)
     
-    # Reply orqali berish
     if message.reply_to_message:
         receiver_id = message.reply_to_message.from_user.id
         args = message.text.split(maxsplit=1)
@@ -252,12 +200,12 @@ async def cmd_givecoin(message: types.Message):
         except ValueError:
             await message.answer("❌ Miqdor son bo'lishi kerak!")
             return
-    # @username orqali berish
-    elif message.entities and len(message.entities) > 1:
+    else:
         args = message.text.split()
         if len(args) < 3:
             await message.answer("❌ Format: /givecoin @username <miqdor>\nMasalan: /givecoin @username 100")
             return
+        
         username = args[1].replace("@", "")
         try:
             amount = int(args[2])
@@ -265,16 +213,12 @@ async def cmd_givecoin(message: types.Message):
             await message.answer("❌ Miqdor son bo'lishi kerak!")
             return
         
-        # Username orqali user ID topish
         try:
             chat = await bot.get_chat(f"@{username}")
             receiver_id = chat.id
-        except Exception as e:
+        except:
             await message.answer("❌ Foydalanuvchi topilmadi!")
             return
-    else:
-        await message.answer("❌ Format:\n/givecoin @username <miqdor>\nYoki reply qilib: /givecoin <miqdor>")
-        return
     
     if amount <= 0:
         await message.answer("❌ Miqdor 0 dan katta bo'lishi kerak!")
@@ -290,20 +234,15 @@ async def cmd_givecoin(message: types.Message):
     
     await message.answer(
         f"✅ Muvaffaqiyatli!\n\n"
-        f"Siz <b>{amount}</b> coinni @{receiver_id} ga berdingiz!\n"
+        f"Siz <b>{amount}</b> coinni berdingiz!\n"
         f"💰 Qolgan coin: {giver['coins']}",
         parse_mode=ParseMode.HTML
     )
 
 @dp.message(Command("giftwaifu"))
 async def cmd_giftwaifu(message: types.Message):
-    if message.chat.type != ChatType.PRIVATE:
-        await message.answer("❌ Bu buyruq guruhda ishlamaydi!\nBotning shaxsiy chatida yozing.")
-        return
-    
     giver = get_user(message.from_user.id)
     
-    # Reply orqali berish
     if message.reply_to_message:
         receiver_id = message.reply_to_message.from_user.id
         args = message.text.split(maxsplit=1)
@@ -311,49 +250,42 @@ async def cmd_giftwaifu(message: types.Message):
             await message.answer("❌ Format: /giftwaifu <waifu_ismi>\nMasalan: /giftwaifu hinata")
             return
         waifu_name = args[1].strip().lower()
-    # @username orqali berish
-    elif message.entities and len(message.entities) > 1:
+    else:
         args = message.text.split()
         if len(args) < 3:
             await message.answer("❌ Format: /giftwaifu @username <waifu_ismi>\nMasalan: /giftwaifu @username hinata")
             return
+        
         username = args[1].replace("@", "")
         waifu_name = args[2].strip().lower()
         
         try:
             chat = await bot.get_chat(f"@{username}")
             receiver_id = chat.id
-        except Exception as e:
+        except:
             await message.answer("❌ Foydalanuvchi topilmadi!")
             return
-    else:
-        await message.answer("❌ Format:\n/giftwaifu @username <waifu_ismi>\nYoki reply qilib: /giftwaifu <waifu_ismi>")
-        return
     
-    # Waifu mavjudmi?
     waifu_info = next((w for w in WAIFUS if w["name"] == waifu_name), None)
     if not waifu_info:
         await message.answer("❌ Bunday waifu mavjud emas!")
         return
     
-    # Beruvchida waifu bormi?
     if waifu_name not in giver["waifus"] or giver["waifus"][waifu_name] == 0:
         await message.answer(f"❌ Sizda <b>{waifu_info['display_name']}</b> yo'q!", parse_mode=ParseMode.HTML)
         return
     
     receiver = get_user(receiver_id)
     
-    # Beruvchidan olish
     giver["waifus"][waifu_name] -= 1
     if giver["waifus"][waifu_name] == 0:
         del giver["waifus"][waifu_name]
     
-    # Qabul qiluvchiga berish
     receiver["waifus"][waifu_name] = receiver["waifus"].get(waifu_name, 0) + 1
     
     await message.answer(
         f"✅ Muvaffaqiyatli!\n\n"
-        f"Siz <b>{waifu_info['display_name']}</b>ni @{receiver_id} ga sovg'a qildingiz!",
+        f"Siz <b>{waifu_info['display_name']}</b>ni sovg'a qildingiz!",
         parse_mode=ParseMode.HTML
     )
 
@@ -363,28 +295,6 @@ async def cmd_setgroup(message: types.Message):
         await message.answer("❌ Bu buyruq faqat guruhda ishlaydi!")
         return
     
-    try:
-        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
-        if member.status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            await message.answer("❌ Bu buyruqni faqat adminlar ishlatishi mumkin!")
-            return
-    except Exception as e:
-        logger.error(f"Admin tekshirishda xatolik: {e}")
-        await message.answer("❌ Admin tekshirishda xatolik!")
-        return
-    
-    is_subscribed = await check_subscription(message.from_user.id)
-    if not is_subscribed:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📢 Kanalga obuna bo'lish", url=f"https://t.me/{REQUIRED_CHANNEL[1:]}")]
-        ])
-        await message.answer(
-            f"⚠️ Botni ishlatish uchun avval <b>{REQUIRED_CHANNEL}</b> kanaliga obuna bo'ling!",
-            reply_markup=keyboard,
-            parse_mode=ParseMode.HTML
-        )
-        return
-    
     if message.chat.id in data["groups"]:
         await message.answer("❌ Bu guruhga allaqachon bot o'rnatilgan!")
         return
@@ -392,30 +302,29 @@ async def cmd_setgroup(message: types.Message):
     data["groups"].append(message.chat.id)
     await message.answer(
         "✅ <b>Guruh muvaffaqiyatli ro'yxatga olindi!</b>\n\n"
-        "Endi har 5 minutda guruhga waifu tashlanadi.\n"
-        "Birinchi bo'lib topgan odam uni qo'lga kiritadi!",
+        "Endi har 5 minutda guruhga waifu tashlanadi.",
         parse_mode=ParseMode.HTML
     )
 
 @dp.message(Command("guess"))
 async def cmd_guess(message: types.Message):
+    global current_waifu
+    
     if message.chat.type not in [ChatType.GROUP, ChatType.SUPERGROUP]:
         await message.answer("❌ Bu buyruq faqat guruhda ishlaydi!")
         return
     
     if message.chat.id not in data["groups"]:
-        await message.answer("❌ Bu guruh ro'yxatdan o'tmagan!\n/setgroup - guruhni ro'yxatga olish")
+        await message.answer("❌ Bu guruh ro'yxatdan o'tmagan!")
         return
     
-    global current_waifu
-    
     if not current_waifu:
-        await message.answer("❌ Hozircha hech qanday waifu yo'q. Keyingi waifuni kuting!")
+        await message.answer("❌ Hozircha hech qanday waifu yo'q.")
         return
     
     args = message.text.split(maxsplit=1)
     if len(args) < 2:
-        await message.answer("❌ Format: /guess <waifu_ismi>\nMasalan: /guess hinata")
+        await message.answer("❌ Format: /guess <waifu_ismi>")
         return
     
     user_guess = args[1].strip().lower()
@@ -442,7 +351,7 @@ async def cmd_guess(message: types.Message):
         
         current_waifu = None
     else:
-        await message.answer("❌ Noto'g'ri! Qayta urinib ko'ring.")
+        await message.answer("❌ Noto'g'ri!")
 
 async def send_waifu_to_group():
     global current_waifu
@@ -464,7 +373,6 @@ async def send_waifu_to_group():
         f"Bu qaysi anime qizi?\n"
         f"🎭 Rarity: {rarity_info['emoji']} {current_waifu['rarity']}\n"
         f"💰 Mukofot: {rarity_info['coins']} coin\n\n"
-        f"Birinchi bo'lib topgan odam uni qo'lga kiritadi!\n"
         f"Javob: /guess <ism>"
     )
     
@@ -472,12 +380,12 @@ async def send_waifu_to_group():
         try:
             await bot.send_photo(
                 chat_id=group_id,
-                photo="https://via.placeholder.com/400x600.png?text=Anime+Waifu",
+                photo="https://via.placeholder.com/400x600.png?text=Waifu",
                 caption=text,
                 parse_mode=ParseMode.HTML
             )
         except Exception as e:
-            logger.error(f"Guruhga yuborishda xatolik (ID: {group_id}): {e}")
+            logger.error(f"Xatolik: {e}")
 
 async def waifu_scheduler():
     while True:
@@ -485,6 +393,7 @@ async def waifu_scheduler():
         await asyncio.sleep(WAIFU_INTERVAL)
 
 async def main():
+    logger.info("Bot ishga tushmoqda...")
     asyncio.create_task(waifu_scheduler())
     await dp.start_polling(bot)
 
